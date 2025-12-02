@@ -171,22 +171,6 @@ const Canvas = () => {
           ctx.fillRect(x, y, 1, 1);
         }
       }
-
-      // Draw grid lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.lineWidth = 0.1;
-      for (let i = 0; i <= 150; i++) {
-        // Vertical lines
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, 150);
-        ctx.stroke();
-        // Horizontal lines
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(150, i);
-        ctx.stroke();
-      }
     }
   }, [pixelGrid]);
 
