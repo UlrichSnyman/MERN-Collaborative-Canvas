@@ -18,6 +18,13 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+// Allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  FRONTEND_URL
+].filter(Boolean);
+
 // Validate environment variables
 if (!MONGODB_URI) {
   console.error('ERROR: MONGODB_URI environment variable is not set');
@@ -103,9 +110,24 @@ async function startServer() {
     });
   });
 
-  // Setup middleware - TEMPORARY: Allow all origins for testing
+  // Setup middleware
   app.use(cors({
-    origin: NODE_ENV === 'production' ? FRONTEND_URL : true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (NODE_ENV === 'production') {
+        // In production, only allow specified origins
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      } else {
+        // In development, allow all origins
+        callback(null, true);
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
