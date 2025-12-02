@@ -7,6 +7,7 @@ const { WebSocketServer } = require('ws');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const compression = require('compression');
 
 const typeDefs = require('./graphql/schema');
 const resolvers = require('./graphql/resolvers');
@@ -14,6 +15,14 @@ const { initializeCanvas } = require('./utils/canvas');
 
 const PORT = process.env.PORT || 4000;
 const MONGODB_URI = process.env.MONGODB_URI;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+// Validate environment variables
+if (!MONGODB_URI) {
+  console.error('ERROR: MONGODB_URI environment variable is not set');
+  process.exit(1);
+}
 
 async function startServer() {
   // Create Express app
@@ -22,7 +31,12 @@ async function startServer() {
 
   // Connect to MongoDB
   try {
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGODB_URI, {
+      maxPoolSize: 10,
+      minPoolSize: 5,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
     console.log('Connected to MongoDB');
     
     // Initialize canvas chunks
@@ -91,10 +105,13 @@ async function startServer() {
 
   // Setup middleware - TEMPORARY: Allow all origins for testing
   app.use(cors({
-    origin: true,
-    credentials: true
+    origin: NODE_ENV === 'production' ? FRONTEND_URL : true,
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
   }));
-  app.use(express.json());
+  app.use(compression());
+  app.use(express.json({ limit: '10mb' }));
 
   // Apply GraphQL middleware
   app.use(
@@ -109,6 +126,7 @@ async function startServer() {
 
   // Basic health check endpoint
   app.get('/health', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=60');
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
   });
 

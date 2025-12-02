@@ -31,6 +31,11 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Create indexes for better query performance
+userSchema.index({ username: 1 });
+userSchema.index({ pixelCount: -1 });
+userSchema.index({ lastPixelPlacementTimestamp: 1 });
+
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

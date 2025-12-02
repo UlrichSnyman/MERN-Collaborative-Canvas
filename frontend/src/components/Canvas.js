@@ -101,14 +101,7 @@ const Canvas = () => {
 
   // Cooldown timer
   useEffect(() => {
-    console.log('Cooldown effect triggered:', { 
-      lastPixelPlacementTimestamp: user?.lastPixelPlacementTimestamp, 
-      isAdmin: user?.isAdmin,
-      userObject: user 
-    });
-    
     if (user?.lastPixelPlacementTimestamp && !user?.isAdmin) {
-      console.log('Setting up cooldown for regular user');
       const updateCooldown = () => {
         const now = Date.now();
         const lastPlacement = new Date(user.lastPixelPlacementTimestamp).getTime();
@@ -125,10 +118,9 @@ const Canvas = () => {
       
       updateCooldown();
     } else if (user?.isAdmin) {
-      console.log('Admin user detected, setting cooldown to 0');
       setCooldownRemaining(0); // Admins have no cooldown
     }
-  }, [user?.lastPixelPlacementTimestamp, user?.isAdmin, pixelGrid]); // Update when a new pixel is placed
+  }, [user?.lastPixelPlacementTimestamp, user?.isAdmin]);
 
   // Handle WebSocket messages
   useEffect(() => {
@@ -245,7 +237,9 @@ const Canvas = () => {
   };
 
   const handleWheel = (e) => {
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     e.stopPropagation();
     
     const container = containerRef.current;
@@ -364,6 +358,7 @@ const Canvas = () => {
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
         onContextMenu={handleCanvasRightClick}
+        style={{ touchAction: 'none' }}
       >
         <canvas
           ref={canvasRef}
