@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Query to get current user data
-  const { data: meData, refetch: refetchMe } = useQuery(GET_ME, {
+  const { refetch: refetchMe } = useQuery(GET_ME, {
     skip: !token,
     onCompleted: (data) => {
       if (data?.me) {
