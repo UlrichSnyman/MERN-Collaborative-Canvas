@@ -60,7 +60,6 @@ const Canvas = () => {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
-  const [canvasSize, setCanvasSize] = useState({ width: 1000, height: 1000 });
 
   const { data: canvasData, loading, error } = useQuery(GET_CANVAS_STATE);
   const [placePixel, { loading: placingPixel }] = useMutation(PLACE_PIXEL);
@@ -78,40 +77,27 @@ const Canvas = () => {
     }
   }, [canvasData]);
 
-  // Set up canvas size based on window size
+  // Calculate initial zoom and pan after DOM is rendered
   useEffect(() => {
-    const updateCanvasSize = () => {
-      if (containerRef.current) {
-        const container = containerRef.current;
-        const rect = container.getBoundingClientRect();
-        
-        // Calculate available space (account for sidebar and padding)
-        const availableWidth = rect.width - 20; // Account for padding
-        const availableHeight = rect.height - 20; // Account for padding
-        
-        // Make canvas take up most of the available space, but keep it square
-        // Use Math.min to ensure canvas fits within available space
-        const canvasSize = Math.min(availableWidth, availableHeight);
-        
-        // Always update canvas size, ensuring minimum size
-        const newSize = Math.max(canvasSize, 400);
-        setCanvasSize(prevSize => {
-          // Only update if the size has actually changed to prevent unnecessary re-renders
-          if (prevSize.width !== newSize || prevSize.height !== newSize) {
-            return {
-              width: newSize,
-              height: newSize
-            };
-          }
-          return prevSize;
-        });
-      }
-    };
-
-    updateCanvasSize();
-    window.addEventListener('resize', updateCanvasSize);
-    return () => window.removeEventListener('resize', updateCanvasSize);
-  }, []);
+    if (pixelGrid.length > 0 && containerRef.current) {
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
+      
+      // Calculate zoom to fill the screen with the 150x150 grid
+      const containerWidth = rect.width;
+      const containerHeight = rect.height;
+      const initialZoom = Math.max(containerWidth / 150, containerHeight / 150) * 0.95;
+      
+      // Center the grid
+      const gridWidth = 150 * initialZoom;
+      const gridHeight = 150 * initialZoom;
+      const centerPanX = (containerWidth - gridWidth) / 2;
+      const centerPanY = (containerHeight - gridHeight) / 2;
+      
+      setZoom(initialZoom);
+      setPan({ x: centerPanX, y: centerPanY });
+    }
+  }, [pixelGrid.length]);
 
   // Cooldown timer
   useEffect(() => {
@@ -174,29 +160,35 @@ const Canvas = () => {
       // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Apply zoom and pan transformations
-      ctx.save();
-      ctx.translate(pan.x, pan.y);
-      ctx.scale(zoom, zoom);
-
-      // Calculate pixel size based on canvas size
-      const pixelSize = Math.min(canvasSize.width / 150, canvasSize.height / 150);
-
       // Disable image smoothing for crisp pixels
       ctx.imageSmoothingEnabled = false;
 
-      // Draw pixels without borders
+      // Draw pixels directly - no transformations needed since CSS handles positioning
       for (let y = 0; y < 150; y++) {
         for (let x = 0; x < 150; x++) {
           const colorIndex = pixelGrid[y][x];
           ctx.fillStyle = COLOR_PALETTE[colorIndex];
-          ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+          ctx.fillRect(x, y, 1, 1);
         }
       }
 
-      ctx.restore();
+      // Draw grid lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 0.1;
+      for (let i = 0; i <= 150; i++) {
+        // Vertical lines
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, 150);
+        ctx.stroke();
+        // Horizontal lines
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(150, i);
+        ctx.stroke();
+      }
     }
-  }, [pixelGrid, zoom, pan, canvasSize]);
+  }, [pixelGrid]);
 
   const handleCanvasRightClick = async (e) => {
     e.preventDefault(); // Prevent default context menu
@@ -205,27 +197,23 @@ const Canvas = () => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Get the actual canvas dimensions
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
+    // Click position in screen coordinates
+    const screenX = e.clientX;
+    const screenY = e.clientY;
     
-    // Calculate the scaling factors
-    const scaleX = canvasWidth / rect.width;
-    const scaleY = canvasHeight / rect.height;
+    // Canvas position and size in screen coordinates (after CSS transform)
+    const canvasScreenLeft = rect.left;
+    const canvasScreenTop = rect.top;
+    const canvasScreenWidth = rect.width;
+    const canvasScreenHeight = rect.height;
     
-    // Calculate click position relative to canvas
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
+    // Click position relative to canvas top-left corner in screen space
+    const clickScreenX = screenX - canvasScreenLeft;
+    const clickScreenY = screenY - canvasScreenTop;
     
-    // Calculate pixel size based on actual canvas size
-    const pixelSize = Math.min(canvasWidth / 150, canvasHeight / 150);
-    
-    // Calculate click position considering zoom and pan
-    const mouseX = (clickX - pan.x) / zoom;
-    const mouseY = (clickY - pan.y) / zoom;
-    
-    const x = Math.floor(mouseX / pixelSize);
-    const y = Math.floor(mouseY / pixelSize);
+    // Convert to canvas pixel coordinates (0-150)
+    const x = Math.floor((clickScreenX / canvasScreenWidth) * 150);
+    const y = Math.floor((clickScreenY / canvasScreenHeight) * 150);
 
     if (x < 0 || x >= 150 || y < 0 || y >= 150) return;
 
@@ -276,20 +264,21 @@ const Canvas = () => {
     e.preventDefault();
     e.stopPropagation();
     
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!container) return;
     
-    const rect = canvas.getBoundingClientRect();
+    const rect = container.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.min(Math.max(zoom * delta, 0.1), 5);
+    const newZoom = Math.min(Math.max(zoom * delta, 0.01), 50);
     
-    // Calculate the zoom center point
+    // Calculate the zoom factor
     const zoomFactor = newZoom / zoom;
     
     // Adjust pan to zoom towards mouse position
+    // Formula: newPan = mouse - (mouse - oldPan) * zoomFactor
     const newPanX = mouseX - (mouseX - pan.x) * zoomFactor;
     const newPanY = mouseY - (mouseY - pan.y) * zoomFactor;
     
@@ -303,8 +292,20 @@ const Canvas = () => {
   };
 
   const resetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    if (containerRef.current) {
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
+      
+      // Reset to fill the screen with the 150x150 grid
+      const initialZoom = Math.max(rect.width / 150, rect.height / 150) * 0.95;
+      const gridWidth = 150 * initialZoom;
+      const gridHeight = 150 * initialZoom;
+      const centerPanX = (rect.width - gridWidth) / 2;
+      const centerPanY = (rect.height - gridHeight) / 2;
+      
+      setZoom(initialZoom);
+      setPan({ x: centerPanX, y: centerPanY });
+    }
   };
 
   if (loading) return <Loading message="Loading canvas..." />;
@@ -371,20 +372,24 @@ const Canvas = () => {
         </div>
       </div>
       
-      <div className="canvas-main" ref={containerRef}>
+      <div 
+        className="canvas-main" 
+        ref={containerRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onWheel={handleWheel}
+        onContextMenu={handleCanvasRightClick}
+      >
         <canvas
           ref={canvasRef}
-          width={canvasSize.width}
-          height={canvasSize.height}
+          width={150}
+          height={150}
           className="canvas-board"
-          onContextMenu={handleCanvasRightClick}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
           style={{
             touchAction: 'none',
-            userSelect: 'none'
+            userSelect: 'none',
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`
           }}
         />
         

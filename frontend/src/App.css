@@ -17,6 +17,8 @@
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  z-index: 200;
+  position: relative;
 }
 
 .App-header h1 {
@@ -57,7 +59,7 @@ main {
   justify-content: center;
   align-items: flex-start;
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
   background-color: #1a1a1a;
 }
 
@@ -140,41 +142,45 @@ main {
 }
 
 .canvas-container {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 0;
+  position: relative;
   width: 100%;
   height: 100%;
   background-color: #1a1a1a;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .canvas-sidebar {
+  position: fixed;
+  left: 0;
+  top: 80px;
   width: 280px;
   min-width: 280px;
-  background-color: #2d2d2d;
-  padding: 20px;
+  background-color: rgba(45, 45, 45, 0.95);
+  padding: 8px;
   border-radius: 0;
   border: none;
   border-right: 1px solid #444;
-  height: 100%;
-  overflow-y: auto;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  height: calc(100vh - 80px);
+  overflow: hidden;
+  box-shadow: none;
+  font-size: 0.85rem;
+  backdrop-filter: blur(10px);
+  z-index: 100;
 }
 
 .canvas-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  height: 100%;
+  position: fixed;
+  top: 80px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: calc(100vh - 80px);
   background-color: #1a1a1a;
   padding: 0;
   margin: 0;
+  overflow: hidden;
+  z-index: 1;
 }
 
 .canvas-board {
@@ -182,7 +188,7 @@ main {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  background-color: #2d2d2d;
+  background-color: #1a1a1a;
   border-radius: 0;
   box-shadow: none;
   touch-action: none;
@@ -191,31 +197,34 @@ main {
   -moz-user-select: none;
   -ms-user-select: none;
   display: block;
-  margin: 0 auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
 }
 
 .color-palette {
   display: grid;
-  grid-template-columns: repeat(8, 20px);
-  gap: 5px;
-  padding: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(16px, 1fr));
+  gap: 3px;
+  padding: 8px;
   border: 1px solid #555;
   border-radius: 8px;
   background: #3a3a3a;
-  max-height: 300px;
-  overflow-y: auto;
+  max-height: none;
+  overflow: hidden;
 }
 
 .color-palette h3 {
   grid-column: 1 / -1;
-  margin: 0 0 10px 0;
+  margin: 0 0 6px 0;
   color: #e0e0e0;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
 }
 
 .color-option {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border: 2px solid #555;
   cursor: pointer;
   border-radius: 4px;
@@ -235,47 +244,51 @@ main {
 
 .canvas-info {
   background-color: #2d2d2d;
-  padding: 15px;
+  padding: 8px;
   border-radius: 8px;
   border: 1px solid #444;
-  margin-top: 10px;
+  margin-top: 6px;
+  font-size: 0.85rem;
 }
 
 .canvas-info h3 {
-  margin: 0 0 10px 0;
+  margin: 0 0 6px 0;
   color: #e0e0e0;
+  font-size: 0.9rem;
 }
 
 .canvas-info p {
-  margin: 5px 0;
+  margin: 3px 0;
   color: #b0b0b0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .canvas-controls {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 8px;
   background-color: #2d2d2d;
-  padding: 15px;
+  padding: 8px;
   border-radius: 8px;
   border: 1px solid #444;
   color: #e0e0e0;
+  font-size: 0.85rem;
 }
 
 .selected-color-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
+  gap: 8px;
+  padding: 6px;
   background-color: #3a3a3a;
   border-radius: 4px;
   border: 1px solid #555;
+  font-size: 0.85rem;
 }
 
 .selected-color-preview {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border: 2px solid #555;
   border-radius: 4px;
 }
@@ -380,18 +393,21 @@ main {
 
 /* Leaderboard styles */
 .leaderboard {
-  position: absolute;
+  position: fixed;
   top: 80px;
-  right: 20px;
+  right: 0;
   width: 300px;
-  background-color: rgba(45, 45, 45, 0.9);
-  border: 1px solid #555;
-  border-radius: 8px;
+  height: calc(100vh - 80px);
+  background-color: rgba(45, 45, 45, 0.95);
+  border: none;
+  border-radius: 0;
   padding: 15px;
   color: #e0e0e0;
   backdrop-filter: blur(10px);
   z-index: 1000;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .leaderboard h3 {
@@ -399,11 +415,23 @@ main {
   text-align: center;
   color: #ffd700;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 
 .leaderboard-list {
-  max-height: 400px;
+  flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Hide scrollbar while allowing scrolling */
+.leaderboard-list::-webkit-scrollbar {
+  width: 0;
+}
+
+.leaderboard-list {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .leaderboard-entry {

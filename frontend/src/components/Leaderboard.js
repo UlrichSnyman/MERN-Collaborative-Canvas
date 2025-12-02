@@ -35,7 +35,7 @@ const Leaderboard = () => {
 
   return (
     <div className="leaderboard">
-      <h3>🏆 Top 10 Players</h3>
+      <h3>Top 10 Players</h3>
       <div className="leaderboard-list">
         {data?.getLeaderboard?.map((entry, index) => (
           <div key={entry.id} className="leaderboard-entry">
